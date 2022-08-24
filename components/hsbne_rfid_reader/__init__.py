@@ -8,6 +8,7 @@ from esphome.const import (
     CONF_TRIGGER_ID
 )
 
+# Define the i2c component as a dependency
 DEPENDENCIES = ["i2c"]
 
 #Create namespace object for RFID reader
@@ -18,7 +19,7 @@ HsbneRfidReaderComponent = hsbne_rfid_reader_ns.class_(
     "HsbneRfidReaderComponent", cg.PollingComponent, i2c.I2CDevice
 )
 
-# Triggers
+# Define rfid read trigger
 HsbneRfidReaderTrigger = hsbne_rfid_reader_ns.class_(
     "HsbneRfidReaderTrigger", automation.Trigger.template(cg.int_)
 )
@@ -28,21 +29,28 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(HsbneRfidReaderComponent),
+            # Add on_value: to the schema as an autonomy function to be triggered by HsbneRfidReaderTrigger
             cv.Optional(CONF_ON_VALUE) : automation.validate_automation(
             {
                 cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(HsbneRfidReaderTrigger),
             })
         }
     )
-    .extend(cv.polling_component_schema("250ms"))
-    .extend(i2c.i2c_device_schema(0x1B) )
+    .extend(cv.polling_component_schema("250ms")) #Add polling component options to schema
+    .extend(i2c.i2c_device_schema(0x1B) ) # Add i2c options to schema
 )
 
+# Code generation function
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+
+    # Generate the i2c code
     await i2c.register_i2c_device(var, config)
 
     for conf in config.get(CONF_ON_VALUE, []):
+        # Get the specific instance of the trigger in the configuration file
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+
+        # Generate and register the automation callback for the specific trigger
         await automation.build_automation(trigger, [(int, "x")], conf)
