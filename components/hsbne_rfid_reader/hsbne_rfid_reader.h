@@ -21,7 +21,7 @@ class HsbneRfidReaderComponent : public PollingComponent, public i2c::I2CDevice 
     void add_on_state_callback(std::function<void(int)> &&callback);
 
   private:
-    uint32_t extract_data(uint64_t raw_data);
+    uint32_t extract_card_number(uint64_t raw_data);
     uint8_t check_parity(uint64_t data);
 };
 

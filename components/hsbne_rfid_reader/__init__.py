@@ -23,8 +23,6 @@ HsbneRfidReaderTrigger = hsbne_rfid_reader_ns.class_(
     "HsbneRfidReaderTrigger", automation.Trigger.template(cg.int_)
 )
 
-HsbneRfidReaderPublishAction = hsbne_rfid_reader_ns.class_("HsbneRfidReaderPublishAction", automation.Action)
-
 #Define configuration schema
 CONFIG_SCHEMA = (
     cv.Schema(

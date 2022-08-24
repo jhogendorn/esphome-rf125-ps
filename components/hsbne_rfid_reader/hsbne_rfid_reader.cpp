@@ -8,10 +8,19 @@ namespace hsbne_rfid_reader {
 
   static const char *const TAG = "hsbne_rfid_reader";
 
+  /**
+   * @brief setup() is called once for the fuction. Currently unused.
+   * 
+   */
   void HsbneRfidReaderComponent::setup() {
 
   }
 
+
+  /**
+   * @brief Displays a log of the config.
+   * 
+   */
   void HsbneRfidReaderComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "HSBNE_RFID_READER:");
     LOG_I2C_DEVICE(this);
@@ -20,6 +29,10 @@ namespace hsbne_rfid_reader {
 
   float HsbneRfidReaderComponent::get_setup_priority() const { return setup_priority::DATA; }
 
+  /**
+   * @brief Update() is run a set frequency as part of the PollingComponent parent
+   * The frequency can be changed in the configuration yaml for a esphome device.
+   */
   void HsbneRfidReaderComponent::update() {
 
     uint8_t data[8];
@@ -40,13 +53,22 @@ namespace hsbne_rfid_reader {
       (((uint64_t) data[0]) << 56);
 
     if (check_parity(data_buffer) == 1) {
-        uint32_t card_number = extract_data(data_buffer);
+        uint32_t card_number = extract_card_number(data_buffer);
         publish_state(card_number);
         ESP_LOGD(TAG, "Rfid read: %i", (int) card_number);
     }
 
   }
 
+  /**
+   * @brief Perform parity check on incoming rfid data
+   * The data contains an 8 bit customer id header for the rfid card
+   * followed by a 32-bit card number. This function checks both row
+   * and column parity of this data. Every 5th bit is the even parity
+   * bit for the preceding 4 bits. The last 5 bits consists of 4 even
+   * column parity bits followed by a stop bit.
+   * @param data the 64-bits read in from the rfid reader
+   */
   uint8_t HsbneRfidReaderComponent::check_parity(uint64_t data) {
     if (((data >> 56) & 0xFF) != 0xFF) {
       return 0;
@@ -65,6 +87,7 @@ namespace hsbne_rfid_reader {
       }
     }
 
+    // Return true if column parity check is correct
     return (((data >> 51) & 0xF)
           ^ ((data >> 46) & 0xF)
           ^ ((data >> 41) & 0xF)
@@ -78,7 +101,15 @@ namespace hsbne_rfid_reader {
           ^ ((data >> 1) & 0xF)) == 0;
   }
 
-  uint32_t HsbneRfidReaderComponent::extract_data(uint64_t raw_data) {
+  /**
+   * @brief Extract the card number from the full rfid data
+   * Takes the full data package and extract the card_number by removing the header
+   * and parity bits.
+   * @param raw_data full rfid data
+   * @return uint32_t card number
+   */
+
+  uint32_t HsbneRfidReaderComponent::extract_card_number(uint64_t raw_data) {
   return ((raw_data >> 41) & 0xF) << 28
         | ((raw_data >> 36) & 0xF) << 24
         | ((raw_data >> 31) & 0xF) << 20
@@ -89,10 +120,20 @@ namespace hsbne_rfid_reader {
         | ((raw_data >> 6) & 0xF);
   }
 
+  /**
+   * @brief Subscribes on_value calls to the card read callback.
+   * This is part of the autonomy funcionality of esphome.
+   * @param callback
+   */
   void HsbneRfidReaderComponent::add_on_state_callback(std::function<void(int)> &&callback) {
     this->callback_.add(std::move(callback));
   }
 
+  /**
+   * @brief Calls the callback function for a successful card read
+   * 
+   * @param state 
+   */
   void HsbneRfidReaderComponent::publish_state(int state) {
     this->callback_.call(state);
   }
