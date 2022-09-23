@@ -37,7 +37,7 @@ namespace hsbne_rfid_reader {
 
     uint8_t data[8];
     if (!this->read_bytes_raw(data, 8)) {
-      ESP_LOGD(TAG, "error");
+      ESP_LOGD(TAG, "I2C Error");
       this->status_set_warning();
       return;
     }
@@ -54,6 +54,7 @@ namespace hsbne_rfid_reader {
 
     if (check_parity(data_buffer) == 1) {
         uint32_t card_number = extract_card_number(data_buffer);
+        _card_number = card_number;
         publish_state(card_number);
         ESP_LOGD(TAG, "Rfid read: %i", (int) card_number);
     }
